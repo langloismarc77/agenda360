@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mon Agenda 360 — version 0.2</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1d2939;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}header{background:#142d49;color:#fff;padding:22px max(18px,calc((100vw - 1230px)/2))}header h1{margin:0;font-size:1.65rem}header p{margin:6px 0 0;color:#c8d8ea}main{max-width:1230px;margin:auto;padding:20px 16px 50px}.panel{background:#fff;border:1px solid #e0e7ef;border-radius:14px;padding:18px;box-shadow:0 4px 15px #1e30400b;margin-bottom:16px}h2{font-size:1.15rem;margin:0 0 12px}h3{margin:4px 0 10px}.muted{color:#5c6879;font-size:.92rem}.toolbar,.flex,.legend,.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.toolbar{justify-content:space-between;margin-bottom:12px}button,.button{border:1px solid #bdcadb;background:#fff;border-radius:8px;padding:9px 12px;font:inherit;cursor:pointer;color:#1d2939}button:hover{background:#eff5ff}button.primary,.button.primary{background:#1765b5;color:white;border-color:#1765b5}button.primary:hover{background:#0d5398}button.danger{color:#aa2334;border-color:#f1c6cd}input,select{min-height:39px;padding:8px;border:1px solid #b9c6d4;border-radius:7px;font:inherit;max-width:100%;background:white}label{font-size:.9rem;display:grid;gap:4px}label.check{display:flex;align-items:center;gap:5px}input[type=checkbox]{min-height:initial}input[type=file]{max-width:240px}.layout{display:grid;grid-template-columns:1.8fr 1fr;gap:16px}.mini{font-size:.82rem}.stat{display:inline-block;background:#eaf3fc;color:#144f81;padding:6px 9px;border-radius:8px}.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid #dde5f0;border-radius:9px;overflow:hidden}.day{min-height:235px;border-right:1px solid #e0e7ee;background:#fff;min-width:0}.day:last-child{border-right:0}.dayhead{background:#edf3f9;padding:9px 5px;text-align:center;font-weight:700;font-size:.82rem;border-bottom:1px solid #dde5f0}.item{margin:5px 4px;padding:6px 5px;border-radius:6px;border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 12%,white);font-size:.77rem;overflow-wrap:anywhere;cursor:pointer}.item strong{display:block}.item.conflict{outline:2px solid #d93a4f}.eventline{border-bottom:1px solid #e5eaf0;padding:9px 0}.eventline:last-child{border:0}.source{display:inline-flex;align-items:center;gap:5px;font-size:.8rem}.dot{display:inline-block;width:9px;height:9px;background:var(--c);border-radius:50%}.filters{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}.notice{border-left:4px solid #1873be;background:#eff6fc;padding:11px;border-radius:5px;margin:10px 0}.warning{border-left-color:#df7c16;background:#fff5e7}.bad{border-left-color:#c23c4c;background:#fff0f1}.results{display:grid;gap:8px}.slot{padding:10px;background:#eaf7f1;border:1px solid #bee5d1;border-radius:7px}.small{font-size:.78rem}details{margin-top:8px}summary{cursor:pointer;font-weight:600}.pill{border-radius:100px;background:#f0f3f7;padding:5px 9px}.sr-only{position:absolute;left:-10000px}footer{max-width:1230px;margin:auto;padding:0 16px 30px;color:#5d6976;font-size:.85rem} @media(max-width:900px){.layout{grid-template-columns:1fr}.week{overflow-x:auto;display:flex}.day{min-width:130px;flex:1}.dayhead{min-height:51px}}@media(max-width:560px){.formgrid{grid-template-columns:1fr}.toolbar{align-items:stretch}.week{font-size:.8rem}header{padding:18px}}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<header><h1>◉ Mon Agenda 360</h1><p>Vue unifiée · Google Agenda en lecture seule · autres calendriers par import .ics</p></header>
+<main>
+<section class="panel" id="googlePanel"><h2>🔗 Connexion Google Agenda — version 0.2</h2>
+<p class="muted">Une fois publiée sur une adresse web sécurisée et configurée dans Google Cloud, cette application peut lire ton agenda Google et tes agendas partagés accessibles, y compris leurs rendez-vous récurrents. <strong>Lecture seule :</strong> elle ne modifie rien chez Google. Les événements Google restent en mémoire temporaire de l’onglet, et ne sont pas enregistrés dans le stockage local.</p>
+<div id="originInfo" class="notice warning small"></div>
+<div class="formgrid"><label class="full">Identifiant client OAuth Google (publique, pas ton mot de passe)<input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="123456789-xxxx.apps.googleusercontent.com"></label>
+<div class="full actions"><button id="connectGoogle" class="primary" type="button">Connecter Google</button><button id="syncGoogle" type="button" disabled>Actualiser les agendas</button><button id="disconnectGoogle" type="button" disabled>Déconnecter Google</button></div></div>
+<div id="googleStatus" class="notice small" role="status" aria-live="polite">Google non connecté. Les autres fonctions restent disponibles.</div>
+<div id="googleCalendars" class="filters"></div>
+<div class="small muted">Période lue : de 30 jours avant aujourd’hui à 120 jours après. Les jours fériés et agendas publics auxquels tu es abonné sont également proposés. Aucun mot de passe ni jeton d’accès n’est demandé dans un formulaire.</div>
+<details><summary>Comment activer la connexion ?</summary><ol class="muted"><li>Héberger le fichier sur un site HTTPS que tu contrôles (par exemple GitHub Pages), ou l’exécuter sur <code>http://localhost</code>.</li><li>Dans Google Cloud, créer un projet, activer <b>Google Calendar API</b> et configurer l'écran de consentement OAuth (ajouter ton adresse comme utilisateur de test si nécessaire).</li><li>Créer un <b>identifiant client OAuth « Application Web »</b>, avec l’adresse du site dans les « origines JavaScript autorisées » (sans chemin).</li><li>Coller ici l’identifiant client finissant par <code>.apps.googleusercontent.com</code>, puis cliquer « Connecter Google ».</li></ol><p class="muted">Une application Google en mode test peut nécessiter une nouvelle autorisation après une période limitée. Ton Google Agenda reste la source officielle.</p></details>
+</section>
+<section class="panel"><div class="toolbar"><div><h2>Vue générale</h2><div class="muted">Les rendez-vous ajoutés manuellement sont stockés dans ce navigateur ; la connexion Google lit les événements à la demande, directement auprès de Google.</div></div><button id="resetDemo">Réinitialiser la démonstration</button></div><div class="legend" id="legend"></div><div class="filters" id="filters"></div><div class="toolbar"><div class="actions"><button id="prev">← Semaine précédente</button><button id="today">Cette semaine</button><button id="next">Semaine suivante →</button></div><strong id="weekLabel"></strong></div><div id="week" class="week" aria-label="Vue sur sept jours"></div></section>
+<div class="layout"><div>
+<section class="panel"><h2>⚠️ Conflits détectés</h2><div id="conflicts"></div></section>
+<section class="panel"><h2>Ajouter un rendez-vous</h2><form id="eventForm"><div class="formgrid"><label class="full">Intitulé<input id="title" placeholder="Ex. Rendez-vous, réunion..." required maxlength="120"></label><label>Agenda<select id="source"></select></label><label>Date<input type="date" id="date" required></label><label>Début<input type="time" id="start" value="09:00" required></label><label>Fin<input type="time" id="end" value="10:00" required></label><div class="full"><button class="primary" type="submit">+ Ajouter</button></div></div></form><div id="formMessage" role="status" class="small"></div></section>
+<section class="panel"><h2>Importer des agendas (.ics)</h2><p class="muted">Tu peux charger un fichier d'export Outlook ou Google Agenda. Les événements importés se mélangent immédiatement aux autres. L'import reste manuel dans cette version.</p><div class="formgrid"><label>Associer à l'agenda<select id="importSource"></select></label><label>Choisir un fichier .ics<input id="icsFile" type="file" accept=".ics,text/calendar"></label></div><div id="importMessage" class="small" role="status"></div><div class="notice warning small">Important : l'import gère les événements simples et les occurrences datées. Les répétitions complexes, annulations et exceptions ne sont pas entièrement interprétées. Vérifie les horaires importés, surtout les fuseaux horaires et changements d'heure.</div></section>
+<section class="panel"><h2>Rendez-vous de la semaine</h2><div id="list"></div></section>
+</div><div>
+<section class="panel"><h2>✨ Trouver un créneau libre</h2><p class="muted">Le moteur cherche dans <b>tous les agendas activés</b> et écarte les plages occupées.</p><div class="formgrid"><label class="full">À partir du<input id="fromDate" type="date"></label><label>Durée<select id="duration"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60" selected>1 heure</option><option value="90">1 h 30</option><option value="120">2 heures</option></select></label><label>Sur<select id="days"><option value="5">5 jours</option><option value="7" selected>7 jours</option><option value="14">14 jours</option><option value="30">30 jours</option></select></label><label>Pas avant<input id="windowStart" type="time" value="09:00"></label><label>Pas après<input id="windowEnd" type="time" value="18:00"></label><label class="full check"><input id="weekends" type="checkbox"> Inclure les week-ends</label><div class="full"><button id="findSlots" class="primary" type="button">Rechercher les disponibilités</button></div></div><div id="slots" class="results" style="margin-top:12px" aria-live="polite"></div></section>
+<section class="panel"><h2>Comment ça marche ?</h2><p class="muted">1. Choisis les agendas à afficher.<br>2. Ajoute des rendez-vous ou importe un fichier .ics.<br>3. Consulte les chevauchements et cherche des disponibilités.</p><details><summary>Et la synchronisation automatique ?</summary><p class="muted">Google peut être connecté en lecture seule après configuration OAuth. Outlook professionnel reste en import manuel (.ics) dans cette version. Aucune connexion à Microsoft n’est activée.</p></details><details><summary>Où sont mes données ?</summary><p class="muted">Les rendez-vous manuels et les imports sont dans le stockage local de ce navigateur. Les données récupérées auprès de Google restent temporairement en mémoire, et sont effacées lors de la déconnexion ou de la fermeture de l’onglet. Le navigateur contacte Google directement. Évite d’importer des données professionnelles sans autorisation.</p></details></section>
+<section class="panel"><h2>Mes données</h2><p class="muted">Tu peux exporter une copie de tes événements au format JSON pour les conserver.</p><div class="actions"><button id="export">Exporter mes données</button><button id="clear" class="danger">Effacer tous les événements</button></div></section>
+</div></div>
+</main><footer>Mon Agenda 360 • Version 0.2 • Google : connexion à la demande, lecture seule • Outlook : import manuel • Sans IA externe.</footer>
+<script>
+'use strict';
+const SOURCES=[{id:'pro',label:'Outlook professionnel',color:'#2379d0'},{id:'perso',label:'Google personnel',color:'#198f65'},{id:'shared',label:'Agendas partagés',color:'#8c5bc8'},{id:'other',label:'Autres agendas',color:'#d07921'}];
+const KEY='agenda360_v1_events', FILTER='agenda360_v1_filters'; // Reprend les données de la version 0.1
+let googleEvents=[]; let googleCalendars=[]; let googleToken=null; let tokenClient=null; let googleReady=false; const GOOGLE_CLIENT_KEY='agenda360_google_client_id'; let googleLoadedAt=null;
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const ds=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const localDate=(s,t='00:00')=>new Date(`${s}T${t}:00`);
+const midnight=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
+const move=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const monday=d=>{let x=midnight(d);return move(x,-((x.getDay()+6)%7))};
+const fmt=d=>new Intl.DateTimeFormat('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(d);
+const dateFmt=d=>new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'long',year:'numeric'}).format(d);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>String(Date.now())+'_'+Math.random().toString(36).slice(2,10);
+function demo(){const base=monday(new Date());let d=(offset,time)=>localDate(ds(move(base,offset)),time).toISOString();return [
+ {id:uid(),title:'Réunion de service (exemple)',source:'pro',start:d(0,'09:00'),end:d(0,'10:30')},
+ {id:uid(),title:'Rendez-vous personnel (exemple)',source:'perso',start:d(0,'10:00'),end:d(0,'11:00')},
+ {id:uid(),title:'Point équipe (exemple)',source:'pro',start:d(1,'14:00'),end:d(1,'15:00')},
+ {id:uid(),title:'Activité partagée (exemple)',source:'shared',start:d(2,'16:30'),end:d(2,'17:30')},
+ {id:uid(),title:'Engagement associatif (exemple)',source:'other',start:d(3,'18:00'),end:d(3,'19:30')},
+ {id:uid(),title:'Réunion de coordination (exemple)',source:'pro',start:d(4,'11:00'),end:d(4,'12:00')}
+ ];}
+function load(){try{let v=JSON.parse(localStorage.getItem(KEY));return Array.isArray(v)?v:demo()}catch{return demo()}}
+let events=load();let visible={pro:true,perso:true,shared:true,other:true};try{visible={...visible,...JSON.parse(localStorage.getItem(FILTER))}}catch{}
+let weekStart=monday(new Date());
+function save(){try{localStorage.setItem(KEY,JSON.stringify(events))}catch{alert('Stockage du navigateur indisponible ou saturé. Exporte tes données pour les conserver.')}}
+if(!localStorage.getItem(KEY))save();
+function active(){return [...events,...googleEvents].filter(e=>visible[e.source]&&Number.isFinite(Date.parse(e.start))&&Number.isFinite(Date.parse(e.end))&&new Date(e.end)>new Date(e.start))}
+function byTime(a,b){return new Date(a.start)-new Date(b.start)}
+function overlaps(a,b){return new Date(a.start)<new Date(b.end)&&new Date(b.start)<new Date(a.end)}
+function conflicts(){let list=active().sort(byTime),out=[];for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){if(new Date(list[j].start)>=new Date(list[i].end))break;if(overlaps(list[i],list[j]) && !(list[i].status==='transparent'||list[j].status==='transparent'))out.push([list[i],list[j]])}return out}
+function source(id){return SOURCES.find(s=>s.id===id)||SOURCES[3]}
+function eventHTML(e,conflictIDs){let s=source(e.source),start=new Date(e.start),end=new Date(e.end);return `<div class="item ${conflictIDs.has(e.id)?'conflict':''}" style="--c:${s.color}" title="${esc(s.label)} : ${esc(e.title)}"><strong>${pad(start.getHours())}:${pad(start.getMinutes())}–${pad(end.getHours())}:${pad(end.getMinutes())}</strong>${esc(e.title)}</div>`}
+function render(){const a=active().sort(byTime),c=conflicts(),ids=new Set(c.flat().map(e=>e.id));$('legend').innerHTML=SOURCES.map(s=>`<span class="source"><span class="dot" style="--c:${s.color}"></span>${esc(s.label)}</span>`).join('');
+$('filters').innerHTML=SOURCES.map(s=>`<label class="check"><input type="checkbox" data-filter="${s.id}" ${visible[s.id]?'checked':''}> ${esc(s.label)}</label>`).join('');
+$('filters').querySelectorAll('input').forEach(el=>el.addEventListener('change',()=>{visible[el.dataset.filter]=el.checked;localStorage.setItem(FILTER,JSON.stringify(visible));render()}));
+$('weekLabel').textContent=`Du ${dateFmt(weekStart)} au ${dateFmt(move(weekStart,6))}`;
+$('week').innerHTML=Array.from({length:7},(_,i)=>{const d=move(weekStart,i),date=ds(d),items=a.filter(e=>ds(new Date(e.start))===date);return `<div class="day"><div class="dayhead">${esc(fmt(d))}</div>${items.length?items.map(e=>eventHTML(e,ids)).join(''):'<div class="muted mini" style="padding:8px">—</div>'}</div>`}).join('');
+$('conflicts').innerHTML=c.length?`<div class="notice bad"><b>${c.length} chevauchement(s) détecté(s)</b> sur les agendas affichés.</div>`+c.slice(0,15).map(([x,y])=>`<div class="eventline"><b>${esc(x.title)}</b> et <b>${esc(y.title)}</b><div class="muted small">${esc(fmt(new Date(x.start)))} · ${pad(new Date(x.start).getHours())}:${pad(new Date(x.start).getMinutes())} / ${pad(new Date(y.start).getHours())}:${pad(new Date(y.start).getMinutes())}</div></div>`).join(''):'<div class="notice">Aucun conflit entre les agendas affichés.</div>';
+const b=move(weekStart,7);let w=a.filter(e=>new Date(e.start)>=weekStart&&new Date(e.start)<b);
+$('list').innerHTML=w.length?w.map(e=>`<div class="eventline"><div><strong>${esc(e.title)}</strong><div class="muted small">${esc(fmt(new Date(e.start)))} · ${new Date(e.start).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}–${new Date(e.end).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} · ${esc(source(e.source).label)}</div></div>${e.external?'<span class="small muted">Google · lecture seule</span>':`<button class="danger small" data-delete="${esc(e.id)}" aria-label="Supprimer ${esc(e.title)}">Supprimer</button>`}</div>`).join(''):'<p class="muted">Aucun événement cette semaine pour les agendas activés.</p>';
+$('list').querySelectorAll('[data-delete]').forEach(el=>el.onclick=()=>{if(confirm('Supprimer ce rendez-vous de Mon Agenda 360 ?')){events=events.filter(e=>e.id!==el.dataset.delete);save();render()}});
+}
+SOURCES.forEach(s=>{for(const id of ['source','importSource']){let op=document.createElement('option');op.value=s.id;op.textContent=s.label;$(id).append(op)}});
+$('date').value=ds(new Date());$('fromDate').value=ds(new Date());
+$('eventForm').onsubmit=e=>{e.preventDefault();const title=$('title').value.trim(),date=$('date').value,st=$('start').value,en=$('end').value;if(!title||!date||!st||!en)return;const start=localDate(date,st),end=localDate(date,en);if(!(end>start)){$('formMessage').textContent='L’heure de fin doit être après le début (sur la même journée).';return}events.push({id:uid(),title,source:$('source').value,start:start.toISOString(),end:end.toISOString()});save();weekStart=monday(start);$('title').value='';$('formMessage').textContent='Rendez-vous ajouté.';render()};
+$('prev').onclick=()=>{weekStart=move(weekStart,-7);render()};$('next').onclick=()=>{weekStart=move(weekStart,7);render()};$('today').onclick=()=>{weekStart=monday(new Date());render()};
+$('resetDemo').onclick=()=>{if(confirm('Remplacer tous les événements actuels par les exemples ?')){events=demo();save();weekStart=monday(new Date());render()}};
+$('clear').onclick=()=>{if(confirm('Effacer définitivement tous les événements stockés dans ce navigateur ?')){events=[];save();render();$('slots').innerHTML=''}};
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,events},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='agenda360-sauvegarde.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};
+function findSlots(){if(googleCalendars.length && (!googleLoadedAt || Date.now()-googleLoadedAt>20*60*1000)){$('slots').textContent='Données Google non actualisées depuis plus de 20 minutes : clique sur « Actualiser les agendas » avant de retenir un créneau.';return} const start=$('windowStart').value,end=$('windowEnd').value,dur=Number($('duration').value),nd=Number($('days').value),from=$('fromDate').value;if(!start||!end||!from||end<=start){$('slots').textContent='Vérifie la date et les heures de recherche.';return}let busy=active().sort(byTime),slots=[];for(let n=0;n<nd;n++){let d=move(localDate(from),n);if(!$('weekends').checked&&(d.getDay()===0||d.getDay()===6))continue;let t=localDate(ds(d),start),limit=localDate(ds(d),end);while(t.getTime()+dur*60000<=limit.getTime()){const finish=new Date(t.getTime()+dur*60000);if(t>new Date()&&!busy.some(e=>e.status!=='transparent'&&new Date(e.start)<finish&&new Date(e.end)>t)){slots.push({start:new Date(t),end:finish});if(slots.length>=12)break}t=new Date(t.getTime()+15*60000)}if(slots.length>=12)break}
+$('slots').innerHTML=googleCalendars.length ? '<div class="notice warning small">Les disponibilités Google sont calculées uniquement dans la période importée ; une absence de rendez-vous ne garantit pas une disponibilité si un agenda est exclu ou inaccessible.</div>' : ''; $('slots').innerHTML += slots.length?`<div class="stat">${slots.length} proposition(s) trouvée(s)</div>`+slots.map(s=>`<div class="slot"><strong>${esc(fmt(s.start))}</strong><div class="small">${s.start.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} – ${s.end.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div></div>`).join(''):'<div class="notice warning">Aucun créneau trouvé avec ces critères. Essaie une période plus longue ou des horaires plus larges.</div>'}
+$('findSlots').onclick=findSlots;
+// Import ICS: handles individual VEVENT with DTSTART and DTEND (UTC, floating local or offset via zone-less local). Recurrence rules are deliberately not expanded.
+function unfold(s){return s.replace(/\r\n/g,'\n').replace(/\n[ \t]/g,'').split('\n')}
+function parseICSDate(line){let v=line.slice(line.indexOf(':')+1).trim();if(/^\d{8}$/.test(v))return new Date(+v.slice(0,4),+v.slice(4,6,8)-1,+v.slice(6,8)).toISOString();if(!/^\d{8}T\d{6}Z?$/.test(v))return null;let y=+v.slice(0,4),m=+v.slice(4,6)-1,d=+v.slice(6,8),h=+v.slice(9,11),mi=+v.slice(11,13),se=+v.slice(13,15);return (v.endsWith('Z')?new Date(Date.UTC(y,m,d,h,mi,se)):new Date(y,m,d,h,mi,se)).toISOString()}
+$('icsFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8_000_000){$('importMessage').textContent='Fichier trop volumineux (maximum 8 Mo).';return}let raw=await f.text(),lines=unfold(raw),records=[],cur=null,skipped=0,recur=0;for(let l of lines){if(l==='BEGIN:VEVENT'){cur={};continue}if(l==='END:VEVENT'){if(cur){if(cur.start&&cur.end&&cur.title&&cur.end>cur.start){records.push({id:uid(),title:cur.title,source:$('importSource').value,start:cur.start,end:cur.end})}else skipped++;if(cur.recurring)recur++}cur=null;continue}if(!cur)continue;let name=l.split(':')[0].split(';')[0].toUpperCase();if(name==='SUMMARY')cur.title=l.slice(l.indexOf(':')+1).replace(/\\[,;nN]/g,c=>c.toLowerCase()==='\\n'?' ':c.slice(1));if(name==='DTSTART')cur.start=parseICSDate(l);if(name==='DTEND')cur.end=parseICSDate(l);if(name==='RRULE')cur.recurring=true}
+const known=new Set(events.map(x=>[x.source,x.title,x.start,x.end].join('|')));let added=0;for(let x of records){let k=[x.source,x.title,x.start,x.end].join('|');if(!known.has(k)){events.push(x);known.add(k);added++}}save();render();$('importMessage').textContent=`${added} événement(s) ajouté(s), ${records.length-added} doublon(s) écarté(s), ${skipped} entrée(s) non importée(s).${recur?' Attention : '+recur+' événement(s) avec répétition : seules les dates présentes sont importées.':''}`;e.target.value=''};
+// OAuth Google Identity Services. Le navigateur appelle directement l’API Google en lecture seule.
+const googleMessage=(m,err=false)=>{const el=$('googleStatus');el.textContent=m;el.className='notice small'+(err?' warning':'')};
+function googleWindow(){const a=new Date();a.setDate(a.getDate()-30);const b=new Date();b.setDate(b.getDate()+120);return [a.toISOString(),b.toISOString()]}
+async function googleGet(path,params={}){
+ const url=new URL('https://www.googleapis.com/calendar/v3/'+path);
+ for(const [k,v] of Object.entries(params))url.searchParams.set(k,String(v));
+ const r=await fetch(url,{headers:{Authorization:'Bearer '+googleToken},cache:'no-store'});
+ if(!r.ok){let d={};try{d=await r.json()}catch{};throw new Error('Google HTTP '+r.status+' : '+(d.error?.message||'Échec de la requête'))}
+ return r.json()
+}
+async function googlePages(path,params){let out=[],pageToken;do{let data=await googleGet(path,{...params,...(pageToken?{pageToken}:{})});out.push(...(data.items||[]));pageToken=data.nextPageToken}while(pageToken);return out}
+async function syncGoogle(){
+ if(!googleToken){googleMessage('Pas de connexion active. Connecte Google à nouveau.',true);return}
+ $('syncGoogle').disabled=true;googleLoadedAt=null;googleMessage('Lecture des agendas Google en cours…');
+ try{
+  const calendars=await googlePages('users/me/calendarList',{maxResults:250});
+  const prev=new Map(googleCalendars.map(c=>[c.id,c.enabled]));
+  googleCalendars=calendars.map(c=>({...c,enabled:prev.has(c.id)?prev.get(c.id):!c.hidden}));
+  let fetched=[],failed=[];const [timeMin,timeMax]=googleWindow();
+  for(const c of googleCalendars.filter(c=>c.enabled)){
+   try{
+    const list=await googlePages('calendars/'+encodeURIComponent(c.id)+'/events',{timeMin,timeMax,singleEvents:true,showDeleted:false,maxResults:2500});
+    const src=c.primary?'perso':'shared';
+    for(const e of list){if(e.status==='cancelled')continue;
+     let start=e.start?.dateTime||e.start?.date, end=e.end?.dateTime||e.end?.date;
+     if(!start||!end)continue;
+     // Date seule = journée entière, interprétée dans le fuseau local de l’ordinateur.
+     let d1=/^\d{4}-\d{2}-\d{2}$/.test(start)?localDate(start).toISOString():new Date(start).toISOString();
+     let d2=/^\d{4}-\d{2}-\d{2}$/.test(end)?localDate(end).toISOString():new Date(end).toISOString();
+     fetched.push({id:'g:'+c.id+':'+e.id,title:e.summary||'(Sans titre)',source:src,start:d1,end:d2,status:e.transparency||'opaque',external:true});
+    }
+   }catch(err){failed.push(c.summary+' ('+err.message+')')}
+  }
+  googleEvents=fetched;googleLoadedAt=failed.length?null:Date.now();
+  render();renderGoogleCalendars();
+  googleMessage(`${googleCalendars.length} agenda(s) accessible(s), ${googleCalendars.filter(c=>c.enabled).length} sélectionné(s), ${fetched.length} événement(s) chargés.`+(failed.length?' Attention : agendas incomplets : '+failed.join(' ; '):' Actualisé à '+new Date().toLocaleTimeString('fr-FR')+'.'),failed.length>0);
+ }catch(e){googleMessage('Impossible de synchroniser : '+e.message,true);googleEvents=[];googleCalendars=[];googleLoadedAt=null;render()}
+ $('syncGoogle').disabled=false
+}
+function renderGoogleCalendars(){const box=$('googleCalendars');box.innerHTML=googleCalendars.length?'<b>Agendas Google inclus :</b> '+googleCalendars.map((c,i)=>`<label class="check"><input type="checkbox" data-gcal="${i}" ${c.enabled?'checked':''}> ${esc(c.summary||c.id)}</label>`).join(''):' ';box.querySelectorAll('[data-gcal]').forEach(el=>{el.onchange=async()=>{googleCalendars[+el.dataset.gcal].enabled=el.checked;await syncGoogle()}})}
+function googleDisconnect(){const t=googleToken;googleToken=null;googleEvents=[];googleCalendars=[];googleLoadedAt=null;render();renderGoogleCalendars();$('syncGoogle').disabled=true;$('disconnectGoogle').disabled=true;$('connectGoogle').disabled=false;googleMessage('Google déconnecté, données Google effacées de cette page.');if(t && window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(t,()=>{})}
+$('disconnectGoogle').onclick=googleDisconnect;
+$('syncGoogle').onclick=syncGoogle;
+$('clientId').value=localStorage.getItem(GOOGLE_CLIENT_KEY)||'';
+$('connectGoogle').onclick=()=>{
+ if(location.protocol==='file:') {googleMessage('Connexion Google impossible depuis un fichier ouvert en double-cliquant. Utilise une adresse HTTPS autorisée ou http://localhost. Voir le mode d’emploi.',true);return}
+ const id=$('clientId').value.trim();if(!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)){googleMessage('Colle un identifiant client OAuth Google valide (qui termine par .apps.googleusercontent.com).',true);return}
+ if(!window.google?.accounts?.oauth2){googleMessage('Bibliothèque de connexion Google indisponible. Vérifie ta connexion Internet et les bloqueurs de scripts.',true);return}
+ localStorage.setItem(GOOGLE_CLIENT_KEY,id);
+ tokenClient=google.accounts.oauth2.initTokenClient({client_id:id,scope:'https://www.googleapis.com/auth/calendar.readonly',callback:async r=>{
+  if(r.error){googleMessage('Autorisation refusée : '+r.error,true);return}
+  googleToken=r.access_token;$('syncGoogle').disabled=false;$('disconnectGoogle').disabled=false;$('connectGoogle').disabled=true;
+  await syncGoogle()
+ }});
+ tokenClient.requestAccessToken({prompt:'consent'});
+};
+$('originInfo').textContent=location.protocol==='file:'?'Mode fichier local : toutes les fonctions hors connexion Google marchent. Pour autoriser Google, héberge le fichier sur une adresse HTTPS autorisée dans Google Cloud.':'Adresse actuelle à autoriser dans Google Cloud : '+location.origin;
+render();
+</script>
+</body>
+</html>
